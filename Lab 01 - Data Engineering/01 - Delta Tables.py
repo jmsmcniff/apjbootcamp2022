@@ -19,6 +19,7 @@
 # MAGIC * Tracking data changes using Change Data Feed
 # MAGIC * Cloning tables
 # MAGIC * Masking data by using Dynamic Views
+# MAGIC * 
 # MAGIC 
 # MAGIC In addition to Delta Tables we will also get to see some tips and tricks on working on Databricks environment.
 
@@ -83,7 +84,7 @@ spark.sql(f"USE {database_name};")
 # MAGIC For our APJ Data Platform we know that we will not need to keep and manage history for this data so creating table can be a simple overwrite each time ETL runs.
 # MAGIC 
 # MAGIC 
-# MAGIC Let's start with simply reading CSV file into DataFrame
+# MAGIC Let's start with simply reading CSV file into DataFrame with no upfront schema definition needed
 
 # COMMAND ----------
 
@@ -152,6 +153,11 @@ df.createOrReplaceTempView("stores_csv_file")
 # MAGIC Now that we have created our first Delta Table - let's see what it looks like on our database and where are the data files stored.  
 # MAGIC 
 # MAGIC Quick way to get information on your table is to run `DESCRIBE EXTENDED` command on SQL cell
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(1) from stores
 
 # COMMAND ----------
 
