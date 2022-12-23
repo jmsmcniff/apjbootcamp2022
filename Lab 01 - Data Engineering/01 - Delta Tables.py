@@ -402,6 +402,151 @@ dbutils.fs.ls(table_location)
 
 # COMMAND ----------
 
+# MAGIC %md ##  ![Delta Lake Tiny Logo](https://pages.databricks.com/rs/094-YMS-629/images/delta-lake-tiny-logo.png) Use Schema Enforcement to protect data quality
+
+# COMMAND ----------
+
+# MAGIC %md To show you how schema enforcement works, let's load in a much larger table (1,000,000 rows) which has two additional columns -- `store_description` and `store_inception_date` -- that do not match our existing Delta Lake table schema.
+
+# COMMAND ----------
+
+dataPath = f"{dbfs_data_path}/StoresLarge.csv"
+
+df = spark.read\
+  .option("header", "true")\
+  .option("delimiter", ",")\
+  .option("inferSchema", "true")\
+  .option("quote", "\"") \
+  .csv(dataPath)
+
+df.createOrReplaceTempView("new_stores_csv")
+df.printSchema()
+
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC DROP TABLE IF EXISTS new_stores;
+# MAGIC 
+# MAGIC CREATE TABLE new_stores
+# MAGIC USING DELTA
+# MAGIC AS
+# MAGIC SELECT * FROM new_stores_csv;
+# MAGIC 
+# MAGIC SELECT * from new_stores;
+
+# COMMAND ----------
+
+# MAGIC %sql DESCRIBE extended new_stores
+
+# COMMAND ----------
+
+# Uncommenting this cell will lead to an error because the schemas don't match.
+# Attempt to write data with new column to Delta Lake table
+# new_stores.limit(5000).write.format("delta").mode("append").saveAsTable("stores")
+
+# COMMAND ----------
+
+# MAGIC %md **Schema enforcement helps keep our tables clean and tidy so that we can trust the data we have stored in Delta Lake.** The writes above were blocked because the schema of the new data did not match the schema of table (see the exception details). See more information about how it works [here](https://databricks.com/blog/2019/09/24/diving-into-delta-lake-schema-enforcement-evolution.html).
+
+# COMMAND ----------
+
+# MAGIC %md ##  ![Delta Lake Tiny Logo](https://pages.databricks.com/rs/094-YMS-629/images/delta-lake-tiny-logo.png) Use Schema Evolution to add new columns to schema
+# MAGIC 
+# MAGIC If we *want* to update our Delta Lake table to match this data source's schema, we can do so using schema evolution. Simply add the following to the Spark write command: `.option("mergeSchema", "true")`
+
+# COMMAND ----------
+
+new_stores.limit(5000).write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable("stores")
+
+# COMMAND ----------
+
+# MAGIC %sql SELECT * FROM stores WHERE id IN ('MEL02', 'JME131338302')
+
+# COMMAND ----------
+
+# MAGIC %md ###![Delta Lake Logo Tiny](https://pages.databricks.com/rs/094-YMS-629/images/delta-lake-tiny-logo.png) Support Change Data Capture Workflows & Other Ingest Use Cases via `MERGE INTO`
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC With a legacy data pipeline, to insert or update a table, you must:
+# MAGIC 1. Identify the new rows to be inserted
+# MAGIC 2. Identify the rows that will be replaced (i.e. updated)
+# MAGIC 3. Identify all of the rows that are not impacted by the insert or update
+# MAGIC 4. Create a new temp based on all three insert statements
+# MAGIC 5. Delete the original table (and all of those associated files)
+# MAGIC 6. "Rename" the temp table back to the original table name
+# MAGIC 7. Drop the temp table
+# MAGIC 
+# MAGIC <img src="https://pages.databricks.com/rs/094-YMS-629/images/merge-into-legacy.gif" alt='Merge process' width=600/>
+# MAGIC 
+# MAGIC 
+# MAGIC #### INSERT or UPDATE with Delta Lake
+# MAGIC 
+# MAGIC 2-step process: 
+# MAGIC 1. Identify rows to insert or update
+# MAGIC 2. Use `MERGE`
+
+# COMMAND ----------
+
+# View delta files before UPDATE
+table_location = f"dbfs:/user/hive/warehouse/{database_name}.db/new_stores"
+
+displayHTML(f"""Make sure <b style="color:green">{table_location}</b> match your table location as per <b>DESCRIBE EXTENDED</b> output above""")
+
+display(dbutils.fs.ls(table_location))
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Update a few records inside the new stores table
+# MAGIC UPDATE new_stores SET city = 'Canberra' where id='RZR428231860';
+# MAGIC UPDATE new_stores SET city = 'Hobart' where id='AAM498823732'
+
+# COMMAND ----------
+
+# View delta files after UPDATE
+table_location = f"dbfs:/user/hive/warehouse/{database_name}.db/new_stores"
+
+displayHTML(f"""Make sure <b style="color:green">{table_location}</b> match your table location as per <b>DESCRIBE EXTENDED</b> output above""")
+
+display(dbutils.fs.ls(table_location))
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC MERGE INTO stores AS s
+# MAGIC USING new_stores AS n
+# MAGIC ON s.id = n.id
+# MAGIC WHEN MATCHED THEN 
+# MAGIC   UPDATE SET *
+# MAGIC WHEN NOT MATCHED 
+# MAGIC   THEN INSERT *;
+
+# COMMAND ----------
+
+# MAGIC %sql SELECT * FROM stores WHERE id IN ('BNE02', 'RZR428231860', 'AAM498823732')
+
+# COMMAND ----------
+
+# MAGIC %md ### <img src="https://pages.databricks.com/rs/094-YMS-629/images/dbsquare.png" width=30/> Cache table in memory (Databricks Delta Lake only)
+
+# COMMAND ----------
+
+# MAGIC %sql CACHE SELECT * FROM stores
+
+# COMMAND ----------
+
+# MAGIC %md ### <img src="https://pages.databricks.com/rs/094-YMS-629/images/dbsquare.png" width=30/> Z-Order Optimize (Databricks Delta Lake only)
+
+# COMMAND ----------
+
+# MAGIC %sql OPTIMIZE stores ZORDER BY id
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC 
 # MAGIC ### Dynamic Views
@@ -431,8 +576,7 @@ dbutils.fs.ls(table_location)
 # MAGIC   END AS email,
 # MAGIC   city,
 # MAGIC   hq_address,
-# MAGIC   phone_number,
-# MAGIC   store_country
+# MAGIC   phone_number
 # MAGIC FROM stores;
 
 # COMMAND ----------

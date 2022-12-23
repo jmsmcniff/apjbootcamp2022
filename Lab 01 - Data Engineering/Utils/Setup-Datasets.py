@@ -24,6 +24,8 @@ def get_datasets_from_git(datasets_data_path, full_refresh=False):
       zip_ref.extractall(datasets_data_path)
   with zipfile.ZipFile(f"{working_dir}/Datasets/dimensions.zip","r") as zip_ref:
       zip_ref.extractall(datasets_data_path)
+  with zipfile.ZipFile(f"{working_dir}/DatasetsStoresLarge.zip","r") as zip_ref:
+      zip_ref.extractall(datasets_data_path)
       
 
 
