@@ -6,6 +6,10 @@
 
 # COMMAND ----------
 
+from pyspark.sql import functions as F
+
+# COMMAND ----------
+
 # dbutils.widgets.help()
 
 # COMMAND ----------
@@ -48,12 +52,16 @@ spark.sql(f"USE {database_name};")
 
 # COMMAND ----------
 
+# MAGIC %sql select * from temp_${dataset_name} 
+
+# COMMAND ----------
+
 # MAGIC %sql
-# MAGIC 
 # MAGIC DROP TABLE IF EXISTS bronze_${dataset_name};
 # MAGIC 
 # MAGIC CREATE TABLE bronze_${dataset_name}
 # MAGIC USING DELTA
+# MAGIC TBLPROPERTIES ("delta.columnMapping.mode" = "name")
 # MAGIC AS
 # MAGIC SELECT * FROM temp_${dataset_name};
 # MAGIC 
@@ -66,3 +74,7 @@ spark.sql(f"USE {database_name};")
 # COMMAND ----------
 
 # display(dbutils.fs.ls('/databricks-datasets/bikeSharing/data-001/'))
+
+# COMMAND ----------
+
+
