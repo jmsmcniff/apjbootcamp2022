@@ -52,10 +52,6 @@ spark.sql(f"USE {database_name};")
 
 # COMMAND ----------
 
-# MAGIC %sql select * from temp_${dataset_name} 
-
-# COMMAND ----------
-
 # MAGIC %sql
 # MAGIC DROP TABLE IF EXISTS bronze_${dataset_name};
 # MAGIC 
