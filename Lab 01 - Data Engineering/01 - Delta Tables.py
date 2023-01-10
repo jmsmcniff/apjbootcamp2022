@@ -444,11 +444,13 @@ df.printSchema()
 
 # Uncommenting this cell will lead to an error because the schemas don't match.
 # Attempt to write data with new column to Delta Lake table
-# new_stores.limit(5000).write.format("delta").mode("append").saveAsTable("stores")
+# spark.table("new_stores").limit(5000).write.format("delta").mode("append").saveAsTable("stores")
 
 # COMMAND ----------
 
 # MAGIC %md **Schema enforcement helps keep our tables clean and tidy so that we can trust the data we have stored in Delta Lake.** The writes above were blocked because the schema of the new data did not match the schema of table (see the exception details). See more information about how it works [here](https://databricks.com/blog/2019/09/24/diving-into-delta-lake-schema-enforcement-evolution.html).
+# MAGIC 
+# MAGIC `store_description` and `store_inception_date` are new columns, and `store_country` is missing!
 
 # COMMAND ----------
 
@@ -458,7 +460,16 @@ df.printSchema()
 
 # COMMAND ----------
 
-new_stores.limit(5000).write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable("stores")
+spark.table("new_stores").limit(5000).write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable("stores")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Take a look at the data now!
+# MAGIC 
+# MAGIC You will see the following:
+# MAGIC - Two new columns added, with null values for the older data, and completed values where ingested from the new_stores dataset (the record with id JME....)
+# MAGIC - null values for the new record in the `store_country` column since this column is not present in the new_stores data.
 
 # COMMAND ----------
 
@@ -517,6 +528,7 @@ display(dbutils.fs.ls(table_location))
 # COMMAND ----------
 
 # MAGIC %sql
+# MAGIC SET spark.databricks.delta.schema.autoMerge.enabled = true;
 # MAGIC MERGE INTO stores AS s
 # MAGIC USING new_stores AS n
 # MAGIC ON s.id = n.id
@@ -527,7 +539,12 @@ display(dbutils.fs.ls(table_location))
 
 # COMMAND ----------
 
-# MAGIC %sql SELECT * FROM stores WHERE id IN ('BNE02', 'RZR428231860', 'AAM498823732')
+# MAGIC %sql
+# MAGIC SET spark.databricks.delta.schema.autoMerge.enabled = false;
+
+# COMMAND ----------
+
+# MAGIC %sql SELECT * FROM stores WHERE id IN ('PER01', 'RZR428231860', 'AAM498823732')
 
 # COMMAND ----------
 
